@@ -206,7 +206,7 @@ modelSelect.addEventListener('change', applyFilters);
 collSelect.addEventListener('change', applyFilters);
 lineSelect.addEventListener('change', applyFilters);
 searchInput.addEventListener('input', applyFilters);
-discountInput.addEventListener('input', applyFilters);
+discountInput.addEventListener('input', ()=>{ applyFilters(); updateCartUI(); });
 
 grid.addEventListener('click', e=>{
   if(e.target.dataset.add){
