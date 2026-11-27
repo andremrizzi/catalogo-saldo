@@ -56,6 +56,9 @@
   #overlay.open{display:block;}
   #open-cart{position:fixed; bottom:16px; right:16px; z-index:5;}
 
+
+  .sec-h{grid-column:1/-1; margin-top:14px; font-size:19px; font-weight:700; letter-spacing:1px; color:var(--gold); border-bottom:1px solid var(--gold); padding-bottom:4px; text-transform:uppercase;}
+  .sec-sub{grid-column:1/-1; margin-top:2px; font-size:14px; font-weight:600; color:var(--muted); letter-spacing:.5px;}
   .grade-print,.print-only{display:none;}
   @media print{
     @page{size:A4 portrait; margin:8mm;}
@@ -66,6 +69,8 @@
     header h1{font-size:15px; color:#111;}
     header .sub{color:#555; font-size:10px;}
     .print-only{display:block !important; color:#555; font-size:9.5px; margin:0 0 3mm;}
+    .sec-h{margin-top:3mm; font-size:12.5px; color:#111; border-bottom:1.2px solid #c9a45c;}
+    .sec-sub{display:none !important;}
     .grid{grid-template-columns:repeat(4,1fr) !important; gap:3mm !important;}
     .card{background:#fff !important; border:1px solid #cfcfcf !important; border-radius:4px; break-inside:avoid; page-break-inside:avoid; opacity:1 !important;}
     .card img{aspect-ratio:1/1.12; object-fit:cover; object-position:center 18%; background:#fff;}
@@ -180,6 +185,27 @@ allSizes.forEach(s=>{
   const o = document.createElement('option'); o.value=s; o.textContent=s; sizeSelect.appendChild(o);
 });
 
+
+const CAT_ORDER = ['Calça Feminina','Calça Feminina Plus','Calça Feminina Country','Shorts','Shorts Plus','Saia','Saia Plus','Vestido','Blusa','Top','Camisa:F','Camisa Country','Jaqueta:F','Bermuda:F','Calça Masculina','Calça Masculina Country','Bermuda:M','Camisa:M','Jaqueta:M'];
+const MODEL_ORDER = ['Skinny','Cigarrete','Reta','Slim','Wide Leg','Boot Cut','Little Boot','Mom','Slouchy','Barrel','Capri','Cropped','Legging','Jogger','Sport Fino','Curto','Meia Coxa','Ciclista','Short-Saia','Mini','Midi','Média','Lápis','Evasê','Godê','Longa','Longo','Top','Blusa'];
+function catKey(p){
+  const c = p.category;
+  if(c==='Bermuda' || c==='Camisa' || c==='Jaqueta') return c + (p.gender==='Masculino' ? ':M' : ':F');
+  if(c==='Calça Masculina' && p.gender!=='Masculino') return 'Calça Feminina';
+  return c;
+}
+function catRank(p){ const i = CAT_ORDER.indexOf(catKey(p)); return i<0 ? 99 : i; }
+function modelRank(p){ const i = MODEL_ORDER.indexOf(p.model); return i<0 ? 99 : i; }
+function blockOf(p){ return (!collSelect.value && p.collection==='Verão 27') ? 0 : 1; }
+function cmpProducts(a,b){
+  return blockOf(a)-blockOf(b) || catRank(a)-catRank(b) || modelRank(a)-modelRank(b)
+      || (a.model||'').localeCompare(b.model||'') || a.display_code.localeCompare(b.display_code);
+}
+function catTitle(k){
+  const m = {'Camisa:F':'Camisa Feminina','Camisa:M':'Camisa Masculina','Jaqueta:F':'Jaqueta Feminina','Jaqueta:M':'Jaqueta Masculina','Bermuda:F':'Bermuda Feminina','Bermuda:M':'Bermuda Masculina'};
+  return m[k] || k;
+}
+
 function applyFilters(){
   const cat = catSelect.value, model = modelSelect.value, coll = collSelect.value, line = lineSelect.value, size = sizeSelect.value;
   const q = searchInput.value.trim().toLowerCase();
@@ -192,13 +218,7 @@ function applyFilters(){
   if(model) list = list.filter(p=>p.model===model);
   if(size) list = list.filter(p=> (p.sizes && p.sizes[size] > 0));
   if(q) list = list.filter(p=> p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
-  if(!coll){
-    list = list.slice().sort((a,b)=>{
-      const av = a.collection === 'Verão 27' ? 0 : 1;
-      const bv = b.collection === 'Verão 27' ? 0 : 1;
-      return av - bv;
-    });
-  }
+  list = list.slice().sort(cmpProducts);
   render(list);
 }
 
@@ -206,7 +226,9 @@ function render(list){
   document.getElementById('count').textContent = list.length + ' item(ns)';
   grid.innerHTML = '';
   const frag = document.createDocumentFragment();
+  let lastBlock=null, lastCat=null, lastModel=null;
   list.forEach(p=>{
+    const b = blockOf(p), ck = catKey(p), mk = p.model || '';
     const card = document.createElement('div'); card.className='card' + (p.stock_total===0 ? ' esgotado' : '');
     const tagClass = p.collection.startsWith('Inv') ? 'inv' : 'ver';
     const priceHtml = p.sale_price
